@@ -10,10 +10,10 @@
 //Number of threads
 
 const int nthreads = 1;
-const int dots = 1 << 28;
+const int dots = 1 << 27;
 
 const double left = 1.0;
-const double right = 11;
+const double right = 5;
 
 const long big = 10000000000;
 
@@ -35,12 +35,10 @@ double f(double x){
     return exp(-x) * x;
 }
 
-double random_number_from_0_to_1(){
-    return rand() / (double)RAND_MAX;
-    // long int randomValue;
-    // struct drand48_data* buff;
- 	// lrand48_r(buff,&randomValue);
- 	// return (double)(randomValue%(big))/(double)big;
+double random_number_from_0_to_1(struct drand48_data* buff){
+    long int randomValue;
+ 	lrand48_r(buff,&randomValue);
+ 	return (double)(randomValue%(big))/(double)big;
 }
 
 
@@ -50,11 +48,15 @@ void* calculate_task(void* args){
 
     double temp_result = 0;
 
+    struct drand48_data buff;
+ 	srand48_r(rand(), &buff);
+
+
     double inter_len = task->x_max - task->x_min;
     double x, y;
 
     for(int i = 0; i < task->dots; i++){
-        x = task->x_min + random_number_from_0_to_1() * inter_len;
+        x = task->x_min + random_number_from_0_to_1(&buff) * inter_len;
         y = f(x);
         temp_result += y;
     }
@@ -71,13 +73,15 @@ int main(){
 
     srand(time(NULL));
 
-    pthread_t thread[nthreads];
-    int dots_to_each_thread = dots / nthreads;
-    double interval = (right - left) / (double)nthreads;
+    for (int n=1; n<50; n++){
 
-    thread_task tasks[nthreads];
+    pthread_t thread[n];
+    int dots_to_each_thread = dots / n;
+    double interval = (right - left) / (double)n;
 
-    for(int i = 0; i < nthreads; i++){
+    thread_task tasks[n];
+
+    for(int i = 0; i < n; i++){
         tasks[i].x_min = left + interval * i;
         tasks[i].x_max = left + interval * (i+1);
         tasks[i].dots = dots_to_each_thread;
@@ -87,20 +91,21 @@ int main(){
 
     clock_t start = clock();
 
-    for (int i = 0; i < nthreads; i++)
+    for (int i = 0; i < n; i++)
         pthread_create(&thread[i], NULL, calculate_task, &tasks[i]);
-    for (int i = 0; i < nthreads; i++)
+    for (int i = 0; i < n; i++)
         pthread_join(thread[i], NULL);
 
     clock_t end = clock();
 
     double result = 0;
-    for (int i = 0; i < nthreads; i++)
+    for (int i = 0; i < n; i++)
     {
         result += tasks[i].result;
     }
 
-    printf("%f,%f\n", result, (double)(end - start)/CLOCKS_PER_SEC);
+    printf("%d,%f,%f\n",n,result, (double)(end - start)/CLOCKS_PER_SEC);
+    }
 
     return(0);
 }
